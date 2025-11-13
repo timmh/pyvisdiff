@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=66", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyvisdiff"
+version = "0.1.0"
+description = "Fork of the codebase for \"Describing Differences in Image Sets with Natural Language\" (CVPR 2024 Oral) that provides a simple Python API"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "VisDiff Authors" }
+]
+dependencies = [
+  "click",
+  "numpy",
+  "pandas",
+  "omegaconf",
+  "tqdm",
+  "wandb",
+  "lmdb",
+  "openai==0.28",
+  "Pillow",
+  "seaborn",
+  "scipy",
+  "scikit-learn",
+  "matplotlib",
+  "torch",
+  "open-clip-torch",
+  "salesforce-lavis",
+  "requests",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools]
+packages = { find = { include = ["pyvisdiff", "pyvisdiff.*", "components", "components.*", "serve", "serve.*", "configs"] } }
+
+[tool.setuptools.package-data]
+"configs" = ["**/*.yaml"]

@@ -1,4 +1,5 @@
 project: VisDiff
+entity: null
 wandb: true  # whether to log to wandb
 seed: 0  # random seed
 

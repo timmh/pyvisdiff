@@ -2,61 +2,117 @@ import json
 import logging
 import os
 import threading
-from typing import List
+from dataclasses import dataclass
+from typing import Dict, List, Optional
 
 import lmdb
 import openai
 
-from serve.global_vars import LLM_CACHE_FILE, VICUNA_URL
+from serve import global_vars
 from serve.utils_general import get_from_cache, save_to_cache
 
 logging.basicConfig(level=logging.INFO)
 
-if not os.path.exists(LLM_CACHE_FILE):
-    os.makedirs(LLM_CACHE_FILE)
+_llm_cache = None
+_llm_cache_path = None
 
-llm_cache = lmdb.open(LLM_CACHE_FILE, map_size=int(1e11))
-openai.api_key = os.environ["OPENAI_API_KEY"]
+
+def _get_llm_cache():
+    global _llm_cache, _llm_cache_path
+    cache_path = str(global_vars.get_llm_cache_path())
+    if _llm_cache is not None and _llm_cache_path == cache_path:
+        return _llm_cache
+
+    if _llm_cache is not None:
+        _llm_cache.close()
+    _llm_cache_path = cache_path
+    _llm_cache = lmdb.open(cache_path, map_size=int(1e11))
+    return _llm_cache
+
+
+@dataclass
+class LLMSettings:
+    api_key: Optional[str] = None
+    host: str = global_vars.DEFAULT_LLM_HOST
+    path: str = global_vars.DEFAULT_LLM_PATH
+
+
+_settings = LLMSettings()
+_DEFAULT_MODEL_BASE: Dict[str, str] = {
+    "gpt-3.5-turbo": "https://api.openai.com/v1",
+    "gpt-4": "https://api.openai.com/v1",
+    "gpt-4-vision-preview": "https://api.openai.com/v1",
+    "vicuna": os.getenv("VICUNA_API_BASE", "http://localhost:8000/v1"),
+}
+
+
+def configure_llm(api_key: Optional[str] = None, host: Optional[str] = None, path: Optional[str] = None) -> None:
+    """Override the default LLM connection parameters."""
+
+    if api_key is not None:
+        _settings.api_key = api_key
+    if host is not None:
+        _settings.host = host
+    if path is not None:
+        _settings.path = path
+
+
+def _resolve_api_base(model: str) -> str:
+    # If host/path were explicitly configured, respect them.
+    if (_settings.host, _settings.path) != (
+        global_vars.DEFAULT_LLM_HOST,
+        global_vars.DEFAULT_LLM_PATH,
+    ):
+        base = _settings.host.rstrip("/")
+        path = _settings.path if _settings.path.startswith("/") else f"/{_settings.path}"
+        return f"{base}{path}"
+
+    default = _DEFAULT_MODEL_BASE.get(model)
+    if default:
+        return default
+    # Fall back to OpenAI-compatible endpoint.
+    return f"{global_vars.DEFAULT_LLM_HOST.rstrip('/')}{global_vars.DEFAULT_LLM_PATH}"
+
+
+def get_llm_api_base(model: str) -> str:
+    return _resolve_api_base(model)
+
+
+def ensure_openai_credentials() -> None:
+    api_key = _settings.api_key or os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "No LLM API key available. Set the OPENAI_API_KEY environment variable "
+            "or supply one via the VisDiff API."
+        )
+    openai.api_key = api_key
 
 
 def get_llm_output(prompt: str, model: str) -> str:
-    api_base = {
-        "gpt-3.5-turbo": "https://api.openai.com/v1",
-        "gpt-4": "https://api.openai.com/v1",
-        "vicuna": VICUNA_URL,
-    }
-    openai.api_base = api_base[model]
+    api_base = get_llm_api_base(model)
+    openai.api_base = api_base
 
-    if model in ["gpt-3.5-turbo", "gpt-4"]:
-        messages = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt},
-        ]
-    else:
-        messages = prompt
+    # Always format messages as chat messages for OpenAI-compatible endpoints
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": prompt},
+    ]
     key = json.dumps([model, messages])
 
+    llm_cache = _get_llm_cache()
     cached_value = get_from_cache(key, llm_cache)
     if cached_value is not None:
-        logging.debug(f"LLM Cache Hit")
+        logging.debug("LLM Cache Hit")
         return cached_value
 
     for _ in range(3):
         try:
-            if model in ["gpt-3.5-turbo", "gpt-4"]:
-                completion = openai.ChatCompletion.create(
-                    model=model,
-                    messages=messages,
-                )
-                response = completion["choices"][0]["message"]["content"]
-            elif model == "vicuna":
-                completion = openai.Completion.create(
-                    model="lmsys/vicuna-7b-v1.5",
-                    prompt=prompt,
-                    max_tokens=256,
-                    temperature=0,  # TODO: greedy may not be optimal
-                )
-                response = completion["choices"][0]["text"]
+            ensure_openai_credentials()
+            completion = openai.ChatCompletion.create(
+                model=model,
+                messages=messages,
+            )
+            response = completion["choices"][0]["message"]["content"]
             save_to_cache(key, response, llm_cache)
             return response
 

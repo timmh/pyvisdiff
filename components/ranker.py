@@ -160,10 +160,19 @@ class CLIPRanker(Ranker):
         super().__init__(args)
 
     def score_hypothesis(self, hypothesis: str, dataset: List[dict]) -> List[float]:
+        clip_dataset = self.args.get("clip_dataset", "laion2b_s39b_b160k")
         image_features = get_embeddings(
-            [item["path"] for item in dataset], self.args["clip_model"], "image"
+            [item["path"] for item in dataset],
+            self.args["clip_model"],
+            "image",
+            clip_dataset,
         )
-        text_features = get_embeddings([hypothesis], self.args["clip_model"], "text")
+        text_features = get_embeddings(
+            [hypothesis],
+            self.args["clip_model"],
+            "text",
+            clip_dataset,
+        )
         similarity = image_features @ text_features.T
         scores = similarity.squeeze(1).tolist()
         return scores

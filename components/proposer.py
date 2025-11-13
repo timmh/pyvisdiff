@@ -14,6 +14,14 @@ from serve.utils_llm import get_llm_output
 from serve.utils_vlm import get_embed_caption_blip, get_vlm_output
 
 
+def _resolve_prompt(prompt_value: str) -> str:
+    """Return custom prompt text or look up predefined templates by name."""
+
+    if isinstance(prompt_value, str) and hasattr(prompts, prompt_value):
+        return getattr(prompts, prompt_value)
+    return prompt_value
+
+
 class Proposer:
     def __init__(self, args: Dict):
         self.args = args
@@ -28,9 +36,13 @@ class Proposer:
         all_logs = []
         all_images = []
         random.seed(self.args["seed"])
+        if len(dataset1) == 0:
+            raise ValueError("Dataset1 is empty")
+        if len(dataset2) == 0:
+            raise ValueError("Dataset2 is empty")
         for i in range(self.args["num_rounds"]):
-            sampled_dataset1 = self.sample(dataset1, self.args["num_samples"])
-            sampled_dataset2 = self.sample(dataset2, self.args["num_samples"])
+            sampled_dataset1 = self.sample(dataset1, min(len(dataset1), self.args["num_samples"]))
+            sampled_dataset2 = self.sample(dataset2, min(len(dataset2), self.args["num_samples"]))
             hypotheses, logs = self.get_hypotheses(sampled_dataset1, sampled_dataset2)
             images = self.visualize(sampled_dataset1, sampled_dataset2)
             all_hypotheses += hypotheses
@@ -78,7 +90,7 @@ class Proposer:
 class LLMProposer(Proposer):
     def __init__(self, args: Dict):
         super().__init__(args)
-        self.prompt = getattr(prompts, args["prompt"])
+        self.prompt = _resolve_prompt(args["prompt"])
 
     def get_hypotheses(
         self, sampled_dataset1: List[Dict], sampled_dataset2: List[Dict]
@@ -162,7 +174,7 @@ class VLMProposer(Proposer):
 
     def __init__(self, args: Dict):
         super().__init__(args)
-        self.prompt = getattr(prompts, args["prompt"])
+        self.prompt = _resolve_prompt(args["prompt"])
 
     def get_hypotheses(
         self, sampled_dataset1: List[Dict], sampled_dataset2: List[Dict]
@@ -194,6 +206,26 @@ class VLMFeatureProposer(Proposer):
         diff_caption = get_embed_caption_blip(sampled_dataset1, sampled_dataset2)
         logs = {"output": diff_caption}
         return diff_caption, logs
+
+
+class ManualProposer(Proposer):
+    """Proposer that returns a fixed list of hypotheses.
+
+    Useful for testing/demo scenarios where no LLM should be invoked.
+    """
+
+    def __init__(self, args: Dict):
+        super().__init__(args)
+        hypotheses = args.get("hypotheses")
+        if not hypotheses:
+            raise ValueError("ManualProposer requires a non-empty 'hypotheses' list")
+        self._hypotheses = hypotheses
+
+    def propose(
+        self, dataset1: List[Dict], dataset2: List[Dict]
+    ) -> Tuple[List[str], List[Dict], List[Dict]]:
+        logs = {"source": "manual"}
+        return list(self._hypotheses), [logs], []
 
 
 def test_proposers():

@@ -47,9 +47,9 @@ Again, output either a 2, 1, or 0. Response:"""
             )
 
         metrics = {
-            "acc@1": scores[0] / 2,
-            "acc@5": np.max(scores[:5]) / 2,
-            "acc@N": np.max(scores[: self.args["n_hypotheses"]]) / 2,
+            "acc@1": float(scores[0] / 2),
+            "acc@5": float(np.max(scores[:5]) / 2),
+            "acc@N": float(np.max(scores[: self.args["n_hypotheses"]]) / 2),
         }
         return metrics, evaluated_hypotheses
 
