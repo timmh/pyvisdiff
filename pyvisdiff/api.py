@@ -67,10 +67,10 @@ def run_visdiff(
     dataset1 = build_dataset_records(dataset_a_images, dataset_a_description, dataset_a_description)
     dataset2 = build_dataset_records(dataset_b_images, dataset_b_description, dataset_b_description)
 
-    ranked_hypotheses, metrics = run_pipeline(
+    ranked_hypotheses, evaluation = run_pipeline(
         args,
         dataset1,
         dataset2,
         [dataset_a_description, dataset_b_description],
     )
-    return {"ranked_hypotheses": ranked_hypotheses, "metrics": metrics}
+    return {"ranked_hypotheses": ranked_hypotheses, "evaluation": evaluation}

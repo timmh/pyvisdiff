@@ -17,4 +17,9 @@ def test_run_visdiff_manual_proposer(manual_overrides):
     )
 
     assert "ranked_hypotheses" in result
-    assert result["ranked_hypotheses"][0].startswith("Group A features more yoga")
+    top_hyp = result["ranked_hypotheses"][0]
+    assert top_hyp["hypothesis"].startswith("Group A features more yoga")
+    assert "evaluation" in result
+    eval_block = result["evaluation"]
+    assert "summary" in eval_block
+    assert "details" in eval_block

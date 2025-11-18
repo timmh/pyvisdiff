@@ -122,7 +122,7 @@ def rank(
     dataset1: List[Dict],
     dataset2: List[Dict],
     group_names: List[str],
-) -> List[str]:
+) -> List[Dict]:
     ranker_args = args["ranker"]
     ranker_args["seed"] = args["seed"]
 
@@ -147,7 +147,7 @@ def rank(
         table_groundtruth = wandb.Table(dataframe=pd.DataFrame(scored_groundtruth))
         wandb.log({"scored groundtruth": table_groundtruth})
 
-    return [hypothesis["hypothesis"] for hypothesis in scored_hypotheses]
+    return scored_hypotheses
 
 
 def evaluate(args: Dict, ranked_hypotheses: List[str], group_names: List[str]) -> Dict:
@@ -161,13 +161,15 @@ def evaluate(args: Dict, ranked_hypotheses: List[str], group_names: List[str]) -
         group_names[1],
     )
 
+    evaluation_result = {"summary": metrics, "details": evaluated_hypotheses}
+
     if args.get("wandb") and evaluator_args["method"] != "NullEvaluator":
         table_evaluated_hypotheses = wandb.Table(
             dataframe=pd.DataFrame(evaluated_hypotheses)
         )
         wandb.log({"evaluated hypotheses": table_evaluated_hypotheses})
         wandb.log(metrics)
-    return metrics
+    return evaluation_result
 
 
 def run_pipeline(
@@ -179,8 +181,12 @@ def run_pipeline(
     _maybe_init_wandb(args)
     hypotheses = propose(args, dataset1, dataset2)
     ranked_hypotheses = rank(args, hypotheses, dataset1, dataset2, group_names)
-    metrics = evaluate(args, ranked_hypotheses, group_names)
-    return ranked_hypotheses, metrics
+    evaluation = evaluate(
+        args,
+        [entry["hypothesis"] for entry in ranked_hypotheses],
+        group_names,
+    )
+    return ranked_hypotheses, evaluation
 
 
 def build_dataset_records(

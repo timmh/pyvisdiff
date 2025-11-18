@@ -32,7 +32,8 @@ result = run_visdiff(
     wandb_project="visdiff-demo",
     llm_api_key="sk-your-key",
 )
-print(result["ranked_hypotheses"][0])
+print(result["ranked_hypotheses"][0]["hypothesis"])
+print(result["evaluation"]["summary"])
 ```
 
 - `config_overrides` mirrors the keys in `configs/base.yaml` so you can switch
@@ -43,6 +44,11 @@ print(result["ranked_hypotheses"][0])
   endpoint.
 - Supply `cache_dir` (string or `Path`) if you want VisDiff to store cached
   embeddings/results outside of the default temporary directory.
+- `result["ranked_hypotheses"]` contains the CLIP ranking metrics (AUROC, per-group
+  similarity, etc.) for each returned hypothesis, while `result["evaluation"]`
+  bundles the evaluator summary plus a `details` list showing the raw 0/1/2
+  judgments collected from GPT (0.5 in the summary corresponds to a raw score of
+  1 that is normalized by dividing by 2).
 
 For offline/testing scenarios set the proposer to `ManualProposer`, the ranker to
 `NullRanker`, and the evaluator to `NullEvaluator`. This configuration avoids

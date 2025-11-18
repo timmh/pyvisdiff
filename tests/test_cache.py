@@ -20,6 +20,7 @@ def test_run_visdiff_custom_cache_dir(tmp_path, manual_overrides):
     )
 
     assert result["ranked_hypotheses"]
+    assert "evaluation" in result
     assert global_vars.get_cache_dir() == custom_cache.resolve()
     assert custom_cache.exists()
 

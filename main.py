@@ -19,10 +19,11 @@ def main(config, cache_dir):
     dataset1, dataset2, group_names = load_data_from_csv(args)
 
     logging.info("Running VisDiff pipeline...")
-    ranked_hypotheses, metrics = run_pipeline(args, dataset1, dataset2, group_names)
-    logging.info("Top hypothesis: %s", ranked_hypotheses[0] if ranked_hypotheses else "None")
-    if metrics:
-        logging.info("Metrics: %s", metrics)
+    ranked_hypotheses, evaluation = run_pipeline(args, dataset1, dataset2, group_names)
+    if ranked_hypotheses:
+        logging.info("Top hypothesis: %s", ranked_hypotheses[0]["hypothesis"])
+    if evaluation and evaluation.get("summary"):
+        logging.info("Evaluation summary: %s", evaluation["summary"])
 
 
 if __name__ == "__main__":
