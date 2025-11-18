@@ -19,6 +19,7 @@ def run_visdiff(
     config_overrides: Optional[Dict] = None,
     wandb_entity: Optional[str] = None,
     wandb_project: Optional[str] = None,
+    wandb_dir: Optional[Union[str, Path]] = None,
     llm_api_key: Optional[str] = None,
     llm_host: Optional[str] = None,
     llm_path: Optional[str] = None,
@@ -34,6 +35,7 @@ def run_visdiff(
         config_overrides: Optional dictionary merged into the base config.
         wandb_entity: Entity to use for Weights & Biases logging.
         wandb_project: Project to use for Weights & Biases logging.
+        wandb_dir: Directory passed to `wandb.init(dir=...)`.
         llm_api_key: API key for the LLM provider.
         llm_host: Host for the LLM provider (e.g. https://api.openai.com).
         llm_path: API path for the LLM provider (e.g. /v1).
@@ -59,6 +61,8 @@ def run_visdiff(
     args["data"]["group1"] = dataset_a_description
     args["data"]["group2"] = dataset_b_description
     args["data"].setdefault("name", "Custom Dataset")
+    if wandb_dir is not None:
+        args["wandb_dir"] = str(Path(wandb_dir))
 
     dataset1 = build_dataset_records(dataset_a_images, dataset_a_description, dataset_a_description)
     dataset2 = build_dataset_records(dataset_b_images, dataset_b_description, dataset_b_description)

@@ -86,6 +86,7 @@ def _maybe_init_wandb(args: Dict) -> None:
     wandb.init(
         project=args.get("project"),
         entity=args.get("entity"),
+        dir=args.get("wandb_dir"),
         name=args["data"].get("name"),
         group=f"{args['data']['group1']} - {args['data']['group2']} ({args['data'].get('purity', 1.0)})",
         config=args,
