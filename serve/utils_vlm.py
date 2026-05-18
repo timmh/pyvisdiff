@@ -11,7 +11,6 @@ import lmdb
 import torch
 from PIL import Image
 
-from lavis.models import load_model_and_preprocess
 import openai
 
 from serve import global_vars
@@ -57,6 +56,13 @@ def _load_blip_captioner() -> _BlipRuntime:
     with _blip_captioner_lock:
         if _blip_captioner is not None:
             return _blip_captioner
+        try:
+            from lavis.models import load_model_and_preprocess
+        except ImportError as exc:
+            raise RuntimeError(
+                "BLIP captioning requires salesforce-lavis. "
+                "Install it or use a non-BLIP captioner model."
+            ) from exc
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model, vis_processors, _ = load_model_and_preprocess(
             name="blip2_t5", model_type="pretrain_flant5xxl", is_eval=True, device=device
@@ -72,6 +78,13 @@ def _load_blip_feature_model() -> _BlipRuntime:
     with _blip_feature_lock:
         if _blip_feature is not None:
             return _blip_feature
+        try:
+            from lavis.models import load_model_and_preprocess
+        except ImportError as exc:
+            raise RuntimeError(
+                "BLIP feature proposer requires salesforce-lavis. "
+                "Install it or disable the BLIP feature proposer."
+            ) from exc
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model, vis_processors, _ = load_model_and_preprocess(
             name="blip2_opt", model_type="pretrain_opt2.7b", is_eval=True, device=device
