@@ -305,12 +305,12 @@ def _run_blip(image_path: str, prompt: str) -> str:
     return result
 
 
-def _run_gpt4v(image_path: str, prompt: str) -> str:
+def _run_openai_vision(image_path: str, prompt: str, model: str) -> str:
     ensure_openai_credentials()
-    openai.api_base = get_llm_api_base("gpt-4-vision-preview")
+    openai.api_base = get_llm_api_base(model)
     base64_image = _get_image_base64(image_path)
     payload = {
-        "model": "gpt-4-vision-preview",
+        "model": model,
         "messages": [
             {
                 "role": "user",
@@ -329,6 +329,16 @@ def _run_gpt4v(image_path: str, prompt: str) -> str:
     return completion["choices"][0]["message"]["content"]
 
 
+def _is_openai_vision_model(model: str) -> bool:
+    prefixes = (
+        "gpt-4o",
+        "gpt-4.1",
+        "gpt-4.5",
+        "gpt-5",
+    )
+    return model == "gpt-4-vision-preview" or model.startswith(prefixes)
+
+
 def get_vlm_output(image: str, prompt: str, model: str) -> str:
     key = json.dumps([model, image, prompt])
     cache_env = _get_vlm_cache()
@@ -341,8 +351,8 @@ def get_vlm_output(image: str, prompt: str, model: str) -> str:
         output = _run_blip(image, prompt)
     elif model == "llava":
         output = _run_llava(image, prompt)
-    elif model == "gpt-4-vision-preview":
-        output = _run_gpt4v(image, prompt)
+    elif _is_openai_vision_model(model):
+        output = _run_openai_vision(image, prompt, model)
     else:
         raise NotImplementedError(f"VLM model {model} not implemented.")
 
