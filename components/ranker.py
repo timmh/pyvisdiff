@@ -149,9 +149,9 @@ class Ranker:
         metrics["correct_delta"] = classify(
             scores1, scores2, threshold=self.args["classify_threshold"]
         )
-        metrics["distribution"] = wandb.Image(
-            plot_distributions(scores1, scores2, hypothesis=hypothesis)
-        )
+        fig = plot_distributions(scores1, scores2, hypothesis=hypothesis)
+        metrics["distribution"] = wandb.Image(fig)
+        plt.close(fig)
         return metrics
 
 
